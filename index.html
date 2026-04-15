@@ -227,6 +227,7 @@
         <span>✋ <kbd>Drag</kbd> панорама</span>
         <span>⬜ <kbd>Shift+Drag</kbd> выделить</span>
         <span>🔄 <kbd>Двойной клик</kbd> сброс</span>
+        <span>👆 <kbd>Наведение</kbd> на зону — инфо</span>
     </div>
 
     <script>
@@ -601,7 +602,7 @@
                 hoverlabel: {bgcolor:'#1e293b', font:{color:'#fff', size:12}}
             };
 
-            const shapes = [], traces = [], annotations = [];
+            const shapes = [], traces = [], hoverTraces = [];
 
             if (STATE.zones && STATE.zones.length > 0) {
                 STATE.zones.forEach((z) => {
@@ -626,7 +627,8 @@
                         y1: z.avgHigh,
                         fillcolor: color,
                         line: { width: 2, color: borderColor, dash: 'solid' },
-                        layer: 'below'
+                        layer: 'below',
+                        hoverinfo: 'skip'
                     });
 
                     // ЭКСТРЕМУМЫ: пунктирные линии (min/max)
@@ -637,7 +639,8 @@
                                 x0: zoneStartTime, x1: zoneEndTime,
                                 y0: z.high, y1: z.high,
                                 line: { color: borderColor, width: 1, dash: 'dot' },
-                                layer: 'below'
+                                layer: 'below',
+                                hoverinfo: 'skip'
                             });
                         }
                         if (z.low < z.avgLow) {
@@ -646,11 +649,13 @@
                                 x0: zoneStartTime, x1: zoneEndTime,
                                 y0: z.low, y1: z.low,
                                 line: { color: borderColor, width: 1, dash: 'dot' },
-                                layer: 'below'
+                                layer: 'below',
+                                hoverinfo: 'skip'
                             });
                         }
                     }
 
+                    // Линия уровня пробоя
                     const triggerLine = isUp ? z.avgHigh : z.avgLow;
                     traces.push({
                         x: [zoneStartTime, zoneEndTime], 
@@ -659,6 +664,7 @@
                         hoverinfo: 'skip', showlegend: false
                     });
                     
+                    // Маркер пробоя
                     if (!z.isActive && z.breakoutIdx !== null && z.breakoutIdx < candles.length) {
                         const breakoutTime = new Date(candles[z.breakoutIdx].time);
                         traces.push({
@@ -672,17 +678,46 @@
                         });
                     }
 
+                    // === СКРЫТАЯ ПОДПИСЬ: показывается при наведении ===
                     const heightPct = ((z.avgHigh - z.avgLow) / z.avgLow * 100).toFixed(2);
-                    let mergeTag = z.mergedCount > 1 ? ` 🧩(+${z.mergedCount})` : '';
-                    let statusIcon = z.isActive ? '🟡' : (isUp ? '🟢↑' : '🔴↓');
+                    const mergeTag = z.mergedCount > 1 ? ` 🧩(+${z.mergedCount})` : '';
+                    const statusIcon = z.isActive ? '🟡' : (isUp ? '🟢↑' : '🔴↓');
+                    const breakoutInfo = z.breakoutType 
+                        ? `<br><b>Пробой:</b> ${z.breakoutType} @ ${z.breakoutPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 6})}` 
+                        : '';
                     
-                    annotations.push({
-                        x: zoneStartTime, y: isUp ? z.avgHigh : z.avgLow,
-                        text: `<b>#${z.id}</b>${mergeTag} ${statusIcon} ${heightPct}% • ${z.totalCandles}св`,
-                        showarrow: false, font: {size: 10, color: '#fff'},
-                        bgcolor: 'rgba(15,23,42,0.9)', bordercolor: borderColor, borderwidth: 1,
-                        xanchor: 'left', yanchor: isUp ? 'bottom' : 'top',
-                        xshift: 4, yshift: isUp ? 4 : -4
+                    // Формируем текст для ховера
+                    const hoverText = `
+                        <b>🎯 Зона #${z.id}</b>${mergeTag} ${statusIcon}<br>
+                        <b>Период:</b> ${new Date(z.startTime).toLocaleString('ru-RU')} — ${new Date(z.endTime).toLocaleString('ru-RU')}<br>
+                        <b>Диапазон:</b> ${z.avgLow.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 6})} — ${z.avgHigh.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 6})}<br>
+                        <b>Высота:</b> ${heightPct}% • <b>Свечей:</b> ${z.totalCandles}<br>
+                        <b>ATR:</b> ${z.atr.toFixed(4)} • <b>Ядро:</b> ${z.coreCandles}св${breakoutInfo}
+                    `.trim();
+
+                    // Невидимый маркер в центре зоны для ховера
+                    const midTime = new Date((z.startTime + z.endTime) / 2);
+                    const midPrice = (z.avgHigh + z.avgLow) / 2;
+                    
+                    hoverTraces.push({
+                        x: [midTime],
+                        y: [midPrice],
+                        text: [hoverText],
+                        mode: 'markers',
+                        marker: { 
+                            size: 0, 
+                            opacity: 0,
+                            hovertemplate: '%{text}<extra></extra>'
+                        },
+                        hoverinfo: 'text',
+                        hoverlabel: { 
+                            bgcolor: '#1e293b', 
+                            font: { color: '#fff', size: 11, family: 'Inter, sans-serif' },
+                            bordercolor: borderColor,
+                            borderwidth: 1,
+                            namelength: -1
+                        },
+                        showlegend: false
                     });
                 });
             }
@@ -703,8 +738,9 @@
                     tickformat: priceFormat, fixedrange: false,
                     hoverformat: priceFormat
                 },
-                shapes: shapes, annotations: annotations, 
-                hovermode: 'x unified',
+                shapes: shapes, 
+                annotations: [], // Убрали статические аннотации
+                hovermode: 'closest', // Для работы ховера по маркерам зон
                 dragmode: 'pan',
                 uirevision: 'chart-' + Date.now()
             };
@@ -728,13 +764,13 @@
 
             try {
                 if (!STATE.chartInitialized) {
-                    await Plotly.newPlot('chart', [traceCandles, ...traces], layout, config);
+                    await Plotly.newPlot('chart', [traceCandles, ...traces, ...hoverTraces], layout, config);
                     STATE.chartInitialized = true;
                     window.addEventListener('resize', () => {
                         if (STATE.chartInitialized) Plotly.Plots.resize(document.getElementById('chart'));
                     });
                 } else {
-                    await Plotly.react('chart', [traceCandles, ...traces], layout, config);
+                    await Plotly.react('chart', [traceCandles, ...traces, ...hoverTraces], layout, config);
                 }
             } catch(e) {
                 console.error('Chart render error:', e);
