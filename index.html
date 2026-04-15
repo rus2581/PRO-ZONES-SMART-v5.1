@@ -988,7 +988,7 @@
             CONFIG.atrPeriod = getVal('cfgAtrPeriod', 14);
             CONFIG.minCandles = getVal('cfgMinCandles', 5);
             CONFIG.zoneWidthATR = getVal('cfgZoneWidth', 1.5, parseFloat);
-            CONFIG.historyLimit = Math.min(10000, getVal('cfgHistory', 10000));
+            CONFIG.historyLimit = Math.min(1000, getVal('cfgHistory', 1000));
             CONFIG.batchSize = Math.min(1000, Math.max(100, getVal('cfgBatchSize', 1000)));
             CONFIG.batchDelay = Math.min(5000, Math.max(500, getVal('cfgBatchDelay', 1000)));
             CONFIG.mergeTolerance = getVal('cfgMergeTolerance', 2);
