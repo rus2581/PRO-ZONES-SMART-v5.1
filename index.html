@@ -261,7 +261,7 @@
             timeframe: '5m',
             autoReconnect: true,
             mergeTolerance: 2,
-            showExtremes: true  // НОВОЕ: показывать экстремумы
+            showExtremes: true
         };
 
         const STATE = {
@@ -269,6 +269,8 @@
             candles: [],
             zones: [],
             ws: null,
+            wsConnectionId: 0,
+            currentWsId: 0,
             wsReconnectAttempts: 0,
             wsReconnectTimer: null,
             isPaused: false,
@@ -281,7 +283,7 @@
         const WS_CONFIG = {
             maxReconnectAttempts: 5,
             reconnectDelay: 2000,
-            minCloseInterval: 3000
+            minCloseInterval: 1000
         };
 
         const API_CONFIG = {
@@ -298,9 +300,16 @@
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     Object.assign(CONFIG, parsed);
+                    // Принудительно ставим 1000, если в конфиге старое значение 10000
+                    if (CONFIG.historyLimit === 10000) {
+                        CONFIG.historyLimit = 1000;
+                    }
                     if (!TIMEFRAMES[CONFIG.timeframe]) {
                         CONFIG.timeframe = '5m';
                     }
+                } else {
+                    // Для новых пользователей сразу 1000
+                    CONFIG.historyLimit = 1000;
                 }
             } catch(e) { console.log('Config load skip'); }
         })();
@@ -453,11 +462,10 @@
                     zoneLow  = Math.min(zoneLow,  candles[k].low);
                 }
                 
-                const avgHigh = sumHigh / coreCount;  // СРЕДНЕЕ HIGH
-                const avgLow  = sumLow  / coreCount;  // СРЕДНЕЕ LOW
+                const avgHigh = sumHigh / coreCount;
+                const avgLow  = sumLow  / coreCount;
 
                 let startIdx = i;
-                // Расширяем влево используя СРЕДНИЕ значения
                 for (let k = i - 1; k >= 0; k--) {
                     const c = candles[k];
                     if (c.high > avgHigh || c.low < avgLow) break;
@@ -469,7 +477,6 @@
                 let breakoutType = null;
                 let breakoutPrice = 0;
 
-                // Расширяем вправо используя СРЕДНИЕ значения
                 for (let k = j; k < candles.length; k++) {
                     const c = candles[k];
                     if (c.high > avgHigh) {
@@ -500,10 +507,10 @@
                     endIdx,
                     startTime:     candles[startIdx].time,
                     endTime:       candles[endIdx].time,
-                    high:          zoneHigh,          // Максимальный high (для экстремумов)
-                    low:           zoneLow,           // Минимальный low (для экстремумов)
-                    avgHigh:       avgHigh,           // СРЕДНИЙ high (для отрисовки зоны)
-                    avgLow:        avgLow,            // СРЕДНИЙ low (для отрисовки зоны)
+                    high:          zoneHigh,
+                    low:           zoneLow,
+                    avgHigh:       avgHigh,
+                    avgLow:        avgLow,
                     atr,
                     coreCandles:   coreCount,
                     totalCandles,
@@ -610,21 +617,20 @@
                     const zoneStartTime = new Date(z.startTime);
                     const zoneEndTime = new Date(z.endTime);
 
-                    // === ГЛАВНАЯ ЗОНА: по СРЕДНИМ значениям ===
+                    // ГЛАВНАЯ ЗОНА: по СРЕДНИМ значениям
                     shapes.push({
                         type: 'rect', xref: 'x', yref: 'y',
                         x0: zoneStartTime, 
                         x1: zoneEndTime,
-                        y0: z.avgLow,    // СРЕДНИЙ LOW
-                        y1: z.avgHigh,   // СРЕДНИЙ HIGH
+                        y0: z.avgLow,
+                        y1: z.avgHigh,
                         fillcolor: color,
                         line: { width: 2, color: borderColor, dash: 'solid' },
                         layer: 'below'
                     });
 
-                    // === ЭКСТРЕМУМЫ: пунктирные линии (min/max) ===
+                    // ЭКСТРЕМУМЫ: пунктирные линии (min/max)
                     if (CONFIG.showExtremes) {
-                        // Верхний экстремум (максимальный high)
                         if (z.high > z.avgHigh) {
                             shapes.push({
                                 type: 'line', xref: 'x', yref: 'y',
@@ -634,7 +640,6 @@
                                 layer: 'below'
                             });
                         }
-                        // Нижний экстремум (минимальный low)
                         if (z.low < z.avgLow) {
                             shapes.push({
                                 type: 'line', xref: 'x', yref: 'y',
@@ -646,7 +651,6 @@
                         }
                     }
 
-                    // Линия уровня пробоя
                     const triggerLine = isUp ? z.avgHigh : z.avgLow;
                     traces.push({
                         x: [zoneStartTime, zoneEndTime], 
@@ -655,7 +659,6 @@
                         hoverinfo: 'skip', showlegend: false
                     });
                     
-                    // Маркер пробоя
                     if (!z.isActive && z.breakoutIdx !== null && z.breakoutIdx < candles.length) {
                         const breakoutTime = new Date(candles[z.breakoutIdx].time);
                         traces.push({
@@ -669,7 +672,6 @@
                         });
                     }
 
-                    // Подпись зоны
                     const heightPct = ((z.avgHigh - z.avgLow) / z.avgLow * 100).toFixed(2);
                     let mergeTag = z.mergedCount > 1 ? ` 🧩(+${z.mergedCount})` : '';
                     let statusIcon = z.isActive ? '🟡' : (isUp ? '🟢↑' : '🔴↓');
@@ -766,8 +768,22 @@
             STATE.zones = []; 
             STATE.chartInitialized = false;
             
-            if (STATE.ws) { STATE.ws.close(); STATE.ws = null; }
-            if (STATE.wsReconnectTimer) { clearTimeout(STATE.wsReconnectTimer); STATE.wsReconnectTimer = null; }
+            // Полная очистка WebSocket перед сменой
+            if (STATE.ws) { 
+                STATE.ws.onopen = null;
+                STATE.ws.onmessage = null;
+                STATE.ws.onerror = null;
+                STATE.ws.onclose = null;
+                try { STATE.ws.close(1000, 'TimeframeChange'); } catch(e) {}
+                STATE.ws = null; 
+            }
+            if (STATE.wsReconnectTimer) { 
+                clearTimeout(STATE.wsReconnectTimer); 
+                STATE.wsReconnectTimer = null; 
+            }
+            // Сбрасываем счётчик подключений
+            STATE.wsConnectionId = 0;
+            STATE.currentWsId = 0;
             
             showToast(`⏱️ Таймфрейм: ${TIMEFRAMES[tfKey].label}`, 'info');
             loadData();
@@ -871,31 +887,58 @@
 
         // === WEBSOCKET ===
         function connectWS() {
+            // Увеличиваем счётчик и запоминаем актуальный ID
+            STATE.wsConnectionId++;
+            const myId = STATE.wsConnectionId;
+            STATE.currentWsId = myId;
+
+            // Полная очистка старого подключения
             if (STATE.ws) {
-                STATE.ws.onclose = null; STATE.ws.onerror = null;
+                STATE.ws.onopen = null;
+                STATE.ws.onmessage = null;
+                STATE.ws.onerror = null;
+                STATE.ws.onclose = null;
                 if (STATE.ws.readyState === WebSocket.OPEN || STATE.ws.readyState === WebSocket.CONNECTING) {
-                    STATE.ws.close(1000, 'Reconnect');
+                    try { STATE.ws.close(1000, 'Cleanup'); } catch(e) {}
                 }
                 STATE.ws = null;
             }
-            if (STATE.wsReconnectTimer) { clearTimeout(STATE.wsReconnectTimer); STATE.wsReconnectTimer = null; }
+            if (STATE.wsReconnectTimer) { 
+                clearTimeout(STATE.wsReconnectTimer); 
+                STATE.wsReconnectTimer = null; 
+            }
             
+            // Проверка троттлинга
             const now = Date.now();
-            if (now - STATE.lastWsClose < WS_CONFIG.minCloseInterval) { console.log('⏳ WS throttle'); return; }
+            if (now - STATE.lastWsClose < WS_CONFIG.minCloseInterval) { 
+                console.log('⏳ WS throttle'); 
+                return; 
+            }
             
             const tfConfig = TIMEFRAMES[CONFIG.timeframe];
             const interval = tfConfig?.interval || '5m';
             const streamName = `${STATE.symbol.toLowerCase()}@kline_${interval}`;
             const wsUrl = `${API_CONFIG.wsUrl}/${streamName}`;
-            console.log('🔌 WS:', wsUrl, 'interval:', interval);
+            console.log('🔌 WS:', wsUrl, 'interval:', interval, 'connId:', myId);
             
             STATE.ws = new WebSocket(wsUrl);
             STATE.wsReconnectAttempts = 0;
 
-            STATE.ws.onopen = () => { console.log('✅ WS connected'); updateStatus('● LIVE', 'green'); STATE.wsReconnectAttempts = 0; };
+            STATE.ws.onopen = () => { 
+                if (myId !== STATE.currentWsId) { 
+                    console.log('🗑️ Stale WS opened, closing:', myId);
+                    STATE.ws?.close(1000, 'Stale'); 
+                    return; 
+                }
+                console.log('✅ WS connected', 'connId:', myId); 
+                updateStatus('● LIVE', 'green'); 
+                STATE.wsReconnectAttempts = 0; 
+            };
 
             STATE.ws.onmessage = (event) => {
+                if (myId !== STATE.currentWsId) return;
                 if (STATE.isPaused) return;
+                
                 try {
                     const msg = JSON.parse(event.data);
                     if (msg.e !== 'kline' || !msg.k) return;
@@ -908,13 +951,17 @@
                         STATE.candles[lastIdx] = candle;
                         if (STATE.chartInitialized) {
                             Plotly.restyle('chart', {
-                                close: [STATE.candles.map(c=>c.close)], high: [STATE.candles.map(c=>c.high)],
-                                low: [STATE.candles.map(c=>c.low)], open: [STATE.candles.map(c=>c.open)]
+                                close: [STATE.candles.map(c=>c.close)], 
+                                high: [STATE.candles.map(c=>c.high)],
+                                low: [STATE.candles.map(c=>c.low)], 
+                                open: [STATE.candles.map(c=>c.open)]
                             }, [0]);
                         }
                     } else if (STATE.candles.length > 0 && candle.time > STATE.candles[lastIdx].time) {
                         STATE.candles.push(candle);
-                        if (STATE.candles.length > CONFIG.historyLimit + 100) STATE.candles.shift();
+                        if (STATE.candles.length > CONFIG.historyLimit + 100) {
+                            STATE.candles.shift();
+                        }
                         if (k.x) {
                             STATE.zones = findZonesCycle(STATE.candles);
                             const dispCount = document.getElementById('dispCount');
@@ -922,22 +969,44 @@
                         }
                         drawChart();
                     }
-                } catch(e) { console.error('WS parse:', e); }
+                } catch(e) { 
+                    console.error('WS parse:', e); 
+                }
             };
 
-            STATE.ws.onerror = (err) => { console.error('WS error:', err); updateStatus('● Ошибка', 'red'); };
+            STATE.ws.onerror = (err) => { 
+                if (myId !== STATE.currentWsId) return;
+                console.error('WS error:', err); 
+                updateStatus('● Ошибка', 'red'); 
+            };
             
             STATE.ws.onclose = (event) => {
-                console.log('WS closed:', event.code, event.reason);
-                STATE.lastWsClose = Date.now();
-                updateStatus('● Отключено', 'red');
+                if (myId !== STATE.currentWsId) {
+                    console.log('🗑️ Stale WS closed:', myId);
+                    return;
+                }
                 
-                if (CONFIG.autoReconnect && !STATE.isPaused && STATE.wsReconnectAttempts < WS_CONFIG.maxReconnectAttempts) {
+                console.log('WS closed:', event.code, event.reason || '', 'connId:', myId);
+                STATE.lastWsClose = Date.now();
+                
+                if (STATE.currentWsId === myId) {
+                    updateStatus('● Отключено', 'red');
+                }
+                
+                if (CONFIG.autoReconnect && !STATE.isPaused && 
+                    STATE.wsReconnectAttempts < WS_CONFIG.maxReconnectAttempts &&
+                    STATE.currentWsId === myId) {
+                    
                     STATE.wsReconnectAttempts++;
                     const delay = WS_CONFIG.reconnectDelay * Math.pow(1.5, STATE.wsReconnectAttempts - 1);
-                    console.log(`🔄 WS reconnect ${STATE.wsReconnectAttempts}/${WS_CONFIG.maxReconnectAttempts} in ${Math.round(delay)}ms`);
-                    STATE.wsReconnectTimer = setTimeout(() => connectWS(), delay);
-                } else if (STATE.wsReconnectAttempts >= WS_CONFIG.maxReconnectAttempts) {
+                    console.log(`🔄 WS reconnect ${STATE.wsReconnectAttempts}/${WS_CONFIG.maxReconnectAttempts} in ${Math.round(delay)}ms`, 'connId:', myId);
+                    
+                    STATE.wsReconnectTimer = setTimeout(() => {
+                        if (STATE.currentWsId === myId) {
+                            connectWS();
+                        }
+                    }, delay);
+                } else if (STATE.wsReconnectAttempts >= WS_CONFIG.maxReconnectAttempts && STATE.currentWsId === myId) {
                     showToast('⚠️ Превышено число попыток подключения.', 'error');
                 }
             };
@@ -988,7 +1057,7 @@
             CONFIG.atrPeriod = getVal('cfgAtrPeriod', 14);
             CONFIG.minCandles = getVal('cfgMinCandles', 5);
             CONFIG.zoneWidthATR = getVal('cfgZoneWidth', 1.5, parseFloat);
-            CONFIG.historyLimit = Math.min(1000, getVal('cfgHistory', 1000));
+            CONFIG.historyLimit = Math.min(10000, getVal('cfgHistory', 1000));
             CONFIG.batchSize = Math.min(1000, Math.max(100, getVal('cfgBatchSize', 1000)));
             CONFIG.batchDelay = Math.min(5000, Math.max(500, getVal('cfgBatchDelay', 1000)));
             CONFIG.mergeTolerance = getVal('cfgMergeTolerance', 2);
