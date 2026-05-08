@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔄 PRO ZONES • Smart Zones v5.1</title>
+    <title>🔄 PRO ZONES • Smart Zones v5.2</title>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
         :root {
@@ -136,7 +136,7 @@
     <div class="header">
         <div class="brand">
             🔄 <span>PRO ZONES</span>
-            <span class="badge">SMART v5.1</span>
+            <span class="badge">SMART v5.2</span>
         </div>
         <div class="controls">
             <input type="text" id="symbolInput" value="BTCUSDT" placeholder="BTCUSDT">
@@ -287,12 +287,38 @@
             minCloseInterval: 1000
         };
 
+        // 🔄 MIGRATION 2026: обновлённая конфигурация API
         const API_CONFIG = {
             baseUrl: 'https://fapi.binance.com/fapi/v1',
-            wsUrl: 'wss://fstream.binance.com/public/ws',
+            wsBase: 'wss://fstream.binance.com', // 🔄 вместо жёсткого wsUrl
             maxLimit: 1000,
             minDelay: 500
         };
+
+        // 🔄 MIGRATION 2026: определение категории стрима для нового роутинга
+        function getWsCategory(streamName) {
+            // streamName формат: "btcusdt@kline_5m"
+            const match = streamName.match(/@([a-zA-Z]+)/);
+            if (!match) return 'market'; // fallback
+            
+            const type = match[1].toLowerCase();
+            
+            // Public (high-frequency order book data)
+            if (['depth', 'bookticker', 'depth20'].includes(type)) {
+                return 'public';
+            }
+            // Market (regular market data: klines, trades, tickers)
+            if (['kline', 'aggtrade', 'markprice', 'ticker', 'miniticker', 'forceorder', 'indexprice'].includes(type)) {
+                return 'market';
+            }
+            // Private (user data streams)
+            if (type === 'listenkey' || streamName.includes('listenkey')) {
+                return 'private';
+            }
+            
+            // Default для неизвестных типов
+            return 'market';
+        }
 
         // Инициализация настроек из localStorage
         (function initConfig() {
@@ -954,8 +980,13 @@
             const tfConfig = TIMEFRAMES[CONFIG.timeframe];
             const interval = tfConfig?.interval || '5m';
             const streamName = `${STATE.symbol.toLowerCase()}@kline_${interval}`;
-            const wsUrl = `${API_CONFIG.wsUrl}/${streamName}`;
-            console.log('🔌 WS:', wsUrl, 'interval:', interval, 'connId:', myId);
+            
+            // 🔄 MIGRATION 2026: новый формат URL с категорией стрима
+            const category = getWsCategory(streamName); // для kline → 'market'
+            const wsMode = 'ws'; // или 'stream' для комбинированных подписок
+            const wsUrl = `${API_CONFIG.wsBase}/${category}/${wsMode}/${streamName}`;
+            
+            console.log('🔌 WS:', wsUrl, 'category:', category, 'connId:', myId);
             
             STATE.ws = new WebSocket(wsUrl);
             STATE.wsReconnectAttempts = 0;
@@ -1137,7 +1168,7 @@
 
             const symInput = document.getElementById('symbolInput');
             if (symInput) symInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') changeSymbol(); });
-            console.log('🚀 PRO ZONES Smart v5.1 initialized');
+            console.log('🚀 PRO ZONES Smart v5.2 initialized (WS Migration 2026)');
             loadData();
         });
 
