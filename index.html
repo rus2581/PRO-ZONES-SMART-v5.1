@@ -43,7 +43,6 @@
         button.danger { background: var(--red); }
         button.danger:hover { background: #dc2626; }
         button:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
-
         .progress-bar {
             position: absolute; top: 60px; left: 16px; right: 16px; z-index: 60;
             height: 4px; background: #1e293b; border-radius: 2px; overflow: hidden;
@@ -54,7 +53,6 @@
             height: 100%; background: linear-gradient(90deg, var(--accent), #22c55e);
             width: 0%; transition: width 0.3s ease;
         }
-
         .info-bar {
             position: absolute; top: 70px; left: 16px; z-index: 50;
             display: flex; gap: 15px; font-size: 0.75em; color: var(--muted);
@@ -68,9 +66,7 @@
         .status-dot.red { background: var(--red); animation: blink 1s infinite; }
         .status-dot.yellow { background: #f59e0b; }
         @keyframes blink { 50% { opacity: 0.4; } }
-
         #chart { width: 100%; height: calc(100vh - 120px); }
-
         .panel {
             position: absolute; top: 70px; right: 16px;
             background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
@@ -85,7 +81,6 @@
         .setting-group label { display: block; font-size: 0.75em; color: var(--muted); margin-bottom: 4px; }
         .setting-group input { width: 100%; }
         .hint { font-size: 0.65em; color: #475569; margin-top: 2px; }
-
         .loader {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(11,14,20,0.95); z-index: 1000;
@@ -95,7 +90,6 @@
         .spinner { width: 40px; height: 40px; border: 3px solid #334155; border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
         .toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 2000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { 
             background: #1e293b; padding: 10px 20px; border-radius: 8px; font-size: 0.85em; 
@@ -120,19 +114,15 @@
     </style>
 </head>
 <body>
-
     <div class="loader" id="loader">
         <div class="spinner"></div>
         <div id="loadText" style="color:#94a3b8; font-size:0.9em;">Подключение к Binance Futures...</div>
         <div id="loadSubtext" style="color:#64748b; font-size:0.8em; margin-top:8px;"></div>
     </div>
-
     <div class="progress-bar" id="progressBar">
         <div class="progress-fill" id="progressFill"></div>
     </div>
-
     <div class="toast-container" id="toasts"></div>
-
     <div class="header">
         <div class="brand">
             🔄 <span>PRO ZONES</span>
@@ -163,7 +153,6 @@
             <button onclick="resetView()" title="Сбросить вид графика">🔄 Сброс</button>
         </div>
     </div>
-
     <div class="info-bar">
         <span><span class="status-dot green" id="statusDot"></span><b id="dispSymbol">BTCUSDT</b></span>
         <span>ТФ: <b id="dispTf" style="color:var(--accent)">5m</b></span>
@@ -172,7 +161,6 @@
         <span>Свечей: <b id="dispCandles">0</b></span>
         <span id="dispStatus">● Готов</span>
     </div>
-
     <div class="panel" id="settingsPanel">
         <h3>⚙️ Настройки <span onclick="togglePanel('settings')">✕</span></h3>
         <div class="setting-group">
@@ -219,7 +207,6 @@
         </div>
         <button onclick="applySettings()" class="primary" style="width:100%; justify-content:center;">✅ Применить</button>
     </div>
-
     <div id="chart"></div>
     
     <div class="chart-hint">
@@ -229,7 +216,6 @@
         <span>🔄 <kbd>Двойной клик</kbd> сброс</span>
         <span>👆 <kbd>Наведение</kbd> на зону — инфо</span>
     </div>
-
     <script>
         // === КОНФИГУРАЦИЯ ТАЙМФРЕЙМОВ ===
         const TIMEFRAMES = {
@@ -249,7 +235,6 @@
             '1w':  { label: '1 неделя',  interval: '1w',  ms: 604_800_000 },
             '1M':  { label: '1 месяц',   interval: '1M',  ms: 2_592_000_000 }
         };
-
         // === ОСНОВНАЯ КОНФИГУРАЦИЯ ===
         const CONFIG = {
             atrPeriod: 14,
@@ -264,7 +249,6 @@
             mergeTolerance: 2,
             showExtremes: true
         };
-
         const STATE = {
             symbol: 'BTCUSDT',
             candles: [],
@@ -280,13 +264,11 @@
             lastWsClose: 0,
             isLoading: false
         };
-
         const WS_CONFIG = {
             maxReconnectAttempts: 5,
             reconnectDelay: 2000,
             minCloseInterval: 1000
         };
-
         // 🔄 MIGRATION 2026: обновлённая конфигурация API
         const API_CONFIG = {
             baseUrl: 'https://fapi.binance.com/fapi/v1',
@@ -294,7 +276,6 @@
             maxLimit: 1000,
             minDelay: 500
         };
-
         // 🔄 MIGRATION 2026: определение категории стрима для нового роутинга
         function getWsCategory(streamName) {
             // streamName формат: "btcusdt@kline_5m"
@@ -319,7 +300,6 @@
             // Default для неизвестных типов
             return 'market';
         }
-
         // Инициализация настроек из localStorage
         (function initConfig() {
             try {
@@ -340,18 +320,15 @@
                 }
             } catch(e) { console.log('Config load skip'); }
         })();
-
         // === УТИЛИТЫ ===
         function normalizeSymbol(input) {
             let sym = input.toUpperCase().replace(/[^A-Z0-9]/g, '');
             if (!/(USDT|USDC|BUSD|BTC|ETH)$/.test(sym)) sym += 'USDT';
             return sym;
         }
-
         function isValidBinanceSymbol(sym) {
             return /^[A-Z0-9]{4,20}$/.test(sym);
         }
-
         function showToast(msg, type = 'info') {
             const container = document.getElementById('toasts');
             if (!container) return;
@@ -364,32 +341,27 @@
                 setTimeout(() => el.remove(), 300);
             }, 4000);
         }
-
         function updateStatus(status, color = 'green') {
             const dot = document.getElementById('statusDot');
             const txt = document.getElementById('dispStatus');
             if (dot) dot.className = `status-dot ${color}`;
             if (txt) txt.textContent = status;
         }
-
         function updateLoader(text, subtext = '') {
             const t = document.getElementById('loadText');
             const s = document.getElementById('loadSubtext');
             if (t) t.textContent = text;
             if (s) s.textContent = subtext;
         }
-
         function updateProgress(percent, show = true) {
             const bar = document.getElementById('progressBar');
             const fill = document.getElementById('progressFill');
             if (bar) bar.classList.toggle('show', show);
             if (fill) fill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
         }
-
         function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
-
         // === РАСЧЕТ ATR ===
         function calculateATR(candles, period) {
             if (!candles || candles.length < period + 1) return 0;
@@ -403,23 +375,17 @@
             }
             return trSum / period;
         }
-
         // === АЛГОРИТМ ОБЪЕДИНЕНИЯ ЗОН ===
         function mergeOverlappingZones(zones, toleranceCandles) {
             if (zones.length === 0) return [];
-
             zones.sort((a, b) => a.startIdx - b.startIdx);
-
             let result = [];
             let current = JSON.parse(JSON.stringify(zones[0]));
             let mergedCount = 1;
-
             for (let i = 1; i < zones.length; i++) {
                 const next = zones[i];
-
                 const isTimeClose = next.startIdx <= (current.endIdx + toleranceCandles);
                 const isPriceOverlap = (next.avgLow <= current.avgHigh) && (next.avgHigh >= current.avgLow);
-
                 if (isTimeClose && isPriceOverlap) {
                     current.startIdx = Math.min(current.startIdx, next.startIdx);
                     current.endIdx   = Math.max(current.endIdx, next.endIdx);
@@ -439,28 +405,21 @@
             }
             current.mergedCount = mergedCount;
             result.push(current);
-
             return result;
         }
-
         // === АЛГОРИТМ ПРОТОРГОВОК: SMART ZONES ===
         function findZonesCycle(candles) {
             if (!candles || candles.length < 50) return [];
-
             const rawZones = [];
             const seenCores = new Set();
-
             for (let i = CONFIG.atrPeriod; i < candles.length - CONFIG.minCandles; i++) {
                 const sliceStart = Math.max(0, i - CONFIG.atrPeriod * 2);
                 const atr = calculateATR(candles.slice(sliceStart, i + 1), CONFIG.atrPeriod);
                 if (!atr || !isFinite(atr)) continue;
-
                 const maxCoreHeight = atr * CONFIG.zoneWidthATR;
-
                 let closeHigh = candles[i].close;
                 let closeLow  = candles[i].close;
                 let j = i + 1;
-
                 while (j < candles.length && j - i < 300) {
                     const c = candles[j];
                     const newHigh = Math.max(closeHigh, c.close);
@@ -470,14 +429,11 @@
                     closeLow  = newLow;
                     j++;
                 }
-
                 const coreCount = j - i;
                 if (coreCount < CONFIG.minCandles) continue;
-
                 const coreKey = `${i}-${j}`;
                 if (seenCores.has(coreKey)) continue;
                 seenCores.add(coreKey);
-
                 // === SMART ZONES: считаем средние high/low ===
                 let sumHigh = 0, sumLow = 0;
                 let zoneHigh = -Infinity, zoneLow = Infinity;
@@ -491,19 +447,16 @@
                 
                 const avgHigh = sumHigh / coreCount;
                 const avgLow  = sumLow  / coreCount;
-
                 let startIdx = i;
                 for (let k = i - 1; k >= 0; k--) {
                     const c = candles[k];
                     if (c.high > avgHigh || c.low < avgLow) break;
                     startIdx = k;
                 }
-
                 let endIdx = j - 1;
                 let breakoutIdx  = null;
                 let breakoutType = null;
                 let breakoutPrice = 0;
-
                 for (let k = j; k < candles.length; k++) {
                     const c = candles[k];
                     if (c.high > avgHigh) {
@@ -523,12 +476,9 @@
                     endIdx = k;
                     if (k - j > 500) break;
                 }
-
                 const isActive = breakoutIdx === null;
                 if (isActive) endIdx = candles.length - 1;
-
                 const totalCandles = endIdx - startIdx + 1;
-
                 rawZones.push({
                     startIdx,
                     endIdx,
@@ -549,7 +499,6 @@
                     score: coreCount * 2 + totalCandles + (breakoutIdx ? 50 : 0)
                 });
             }
-
             rawZones.sort((a, b) => b.score - a.score);
             const mergedZones = mergeOverlappingZones(rawZones, CONFIG.mergeTolerance);
             mergedZones.sort((a, b) => a.startIdx - b.startIdx);
@@ -557,19 +506,16 @@
             
             return mergedZones;
         }
-
         // === ЗАГРУЗКА ИСТОРИИ ===
         async function fetchCandlesPaginated(symbol, interval, totalLimit, batchSize, batchDelay, onProgress) {
             const candles = [];
             let endTime = null;
             let loaded = 0;
             const maxAttempts = 3;
-
             while (loaded < totalLimit) {
                 const limit = Math.min(batchSize, totalLimit - loaded);
                 let url = `${API_CONFIG.baseUrl}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`;
                 if (endTime) url += `&endTime=${endTime}`;
-
                 let res, attempts = 0;
                 while (attempts < maxAttempts) {
                     try {
@@ -587,49 +533,41 @@
                         await sleep(1000 * attempts);
                     }
                 }
-
                 const data = await res.json();
                 if (!data?.length) break;
-
                 const batch = data.map(c => ({
                     time: +c[0], open: +c[1], high: +c[2], low: +c[3], close: +c[4], volume: +c[5]
                 })).filter(c => isFinite(c.time) && isFinite(c.close));
-
                 candles.push(...batch);
                 loaded += batch.length;
                 endTime = batch[0].time - 1;
-
                 if (onProgress) onProgress(loaded, totalLimit);
                 if (batch.length < limit) break;
                 if (loaded < totalLimit && batchDelay > 0) {
                     await sleep(batchDelay);
                 }
             }
-
             candles.sort((a, b) => a.time - b.time);
             return candles;
         }
-
         // === ВИЗУАЛИЗАЦИЯ ===
         async function drawChart() {
             const candles = STATE.candles;
             if (!candles || candles.length === 0) return;
-
             const time = candles.map(c => new Date(c.time));
             const lastPrice = candles[candles.length-1]?.close || 0;
             const priceFormat = lastPrice > 1000 ? '$,.2f' : (lastPrice > 10 ? '$,.4f' : '$,.6f');
-
             const traceCandles = {
                 x: time, open: candles.map(c=>c.open), high: candles.map(c=>c.high),
                 low: candles.map(c=>c.low), close: candles.map(c=>c.close),
-                type: 'candlestick', 
-                decreasing: {line:{color:'#ef4444'}}, increasing: {line:{color:'#22c55e'}},
+                type: 'candlestick',
+                decreasing: {line:{color:'#f87171', width: 1}, fillcolor: '#ef4444'},
+                increasing: {line:{color:'#4ade80', width: 1}, fillcolor: '#22c55e'},
+                whiskerwidth: 0.45,
                 hoverinfo: 'x+open+high+low+close', 
-                hoverlabel: {bgcolor:'#1e293b', font:{color:'#fff', size:12}}
+                hoverlabel: {bgcolor:'#1e293b', font:{color:'#e2e8f0', size:11}, bordercolor: '#334155'}
             };
-
             const shapes = [], traces = [], hoverTraces = [];
-
             if (STATE.zones && STATE.zones.length > 0) {
                 STATE.zones.forEach((z) => {
                     const isUp = z.breakoutType === 'UP';
@@ -643,7 +581,6 @@
                     
                     const zoneStartTime = new Date(z.startTime);
                     const zoneEndTime = new Date(z.endTime);
-
                     // ГЛАВНАЯ ЗОНА: по СРЕДНИМ значениям
                     shapes.push({
                         type: 'rect', xref: 'x', yref: 'y',
@@ -652,11 +589,11 @@
                         y0: z.avgLow,
                         y1: z.avgHigh,
                         fillcolor: color,
-                        line: { width: 2, color: borderColor, dash: 'solid' },
+                        line: { width: 1, color: borderColor, dash: 'solid' },
+                        opacity: z.isActive ? 0.9 : 0.6,
                         layer: 'below',
                         hoverinfo: 'skip'
                     });
-
                     // ЭКСТРЕМУМЫ: пунктирные линии (min/max)
                     if (CONFIG.showExtremes) {
                         if (z.high > z.avgHigh) {
@@ -664,7 +601,8 @@
                                 type: 'line', xref: 'x', yref: 'y',
                                 x0: zoneStartTime, x1: zoneEndTime,
                                 y0: z.high, y1: z.high,
-                                line: { color: borderColor, width: 1, dash: 'dot' },
+                                line: { color: borderColor, width: 0.75, dash: 'dot' },
+                                opacity: 0.5,
                                 layer: 'below',
                                 hoverinfo: 'skip'
                             });
@@ -674,19 +612,20 @@
                                 type: 'line', xref: 'x', yref: 'y',
                                 x0: zoneStartTime, x1: zoneEndTime,
                                 y0: z.low, y1: z.low,
-                                line: { color: borderColor, width: 1, dash: 'dot' },
+                                line: { color: borderColor, width: 0.75, dash: 'dot' },
+                                opacity: 0.5,
                                 layer: 'below',
                                 hoverinfo: 'skip'
                             });
                         }
                     }
-
                     // Линия уровня пробоя
                     const triggerLine = isUp ? z.avgHigh : z.avgLow;
                     traces.push({
                         x: [zoneStartTime, zoneEndTime], 
                         y: [triggerLine, triggerLine],
-                        mode: 'lines', line: { color: borderColor, width: 1.5, dash: 'dash' },
+                        mode: 'lines', line: { color: borderColor, width: 1, dash: 'dash' },
+                        opacity: 0.85,
                         hoverinfo: 'skip', showlegend: false
                     });
                     
@@ -698,12 +637,11 @@
                             mode: 'markers', 
                             marker: { 
                                 symbol: isUp ? 'triangle-up' : 'triangle-down', 
-                                size: 12, color: borderColor, line: {width:2, color:'#0b0e14'} 
+                                size: 9, color: borderColor, line: {width: 1, color:'#0b0e14'} 
                             },
                             hoverinfo: 'skip', showlegend: false
                         });
                     }
-
                     // === СКРЫТАЯ ПОДПИСЬ: показывается при наведении ===
                     const heightPct = ((z.avgHigh - z.avgLow) / z.avgLow * 100).toFixed(2);
                     const mergeTag = z.mergedCount > 1 ? ` 🧩(+${z.mergedCount})` : '';
@@ -720,7 +658,6 @@
                         <b>Высота:</b> ${heightPct}% • <b>Свечей:</b> ${z.totalCandles}<br>
                         <b>ATR:</b> ${z.atr.toFixed(4)} • <b>Ядро:</b> ${z.coreCandles}св${breakoutInfo}
                     `.trim();
-
                     // Невидимый маркер в центре зоны для ховера
                     const midTime = new Date((z.startTime + z.endTime) / 2);
                     const midPrice = (z.avgHigh + z.avgLow) / 2;
@@ -747,30 +684,37 @@
                     });
                 });
             }
-
             const layout = {
                 paper_bgcolor: '#0b0e14', plot_bgcolor: '#0b0e14',
-                font: {color: '#94a3b8', family: 'Inter, sans-serif'},
-                margin: {t: 15, l: 65, r: 20, b: 45},
+                font: {color: '#7d8ba1', family: 'Inter, -apple-system, sans-serif', size: 11},
+                margin: {t: 10, l: 16, r: 64, b: 40},
                 xaxis: { 
-                    gridcolor: '#1e293b', linecolor: '#1e2937', 
+                    gridcolor: 'rgba(148,163,184,0.06)', linecolor: '#1e2937', zeroline: false,
                     rangeslider: { visible: false }, 
                     type: 'date',
-                    tickfont: { size: 10 },
-                    hoverformat: '%H:%M • %d.%m.%Y'
+                    tickfont: { size: 10, color: '#64748b' },
+                    hoverformat: '%H:%M • %d.%m.%Y',
+                    showspikes: true, spikemode: 'across', spikesnap: 'cursor',
+                    spikecolor: '#475569', spikethickness: 1, spikedash: 'dot',
+                    showline: true, linewidth: 1, ticks: 'outside', tickcolor: 'rgba(148,163,184,0.1)'
                 },
                 yaxis: { 
-                    gridcolor: '#1e293b', linecolor: '#1e2937', 
+                    gridcolor: 'rgba(148,163,184,0.06)', linecolor: '#1e2937', zeroline: false,
                     tickformat: priceFormat, fixedrange: false,
-                    hoverformat: priceFormat
+                    tickfont: { size: 10, color: '#64748b' },
+                    hoverformat: priceFormat,
+                    side: 'right',
+                    showspikes: true, spikemode: 'across', spikesnap: 'cursor',
+                    spikecolor: '#475569', spikethickness: 1, spikedash: 'dot',
+                    showline: true, linewidth: 1, ticks: 'outside', tickcolor: 'rgba(148,163,184,0.1)'
                 },
                 shapes: shapes, 
                 annotations: [], // Убрали статические аннотации
                 hovermode: 'closest', // Для работы ховера по маркерам зон
+                hoverdistance: 15,
                 dragmode: 'pan',
                 uirevision: 'chart-' + Date.now()
             };
-
             const config = {
                 responsive: true, displayModeBar: true,
                 modeBarButtons: [
@@ -787,7 +731,6 @@
                 showAxisDragHandles: true, showAxisRangeEntryBoxes: false,
                 edits: { axisTitleText: false, legendPosition: false, legendText: false }
             };
-
             try {
                 if (!STATE.chartInitialized) {
                     await Plotly.newPlot('chart', [traceCandles, ...traces, ...hoverTraces], layout, config);
@@ -803,13 +746,11 @@
                 showToast('⚠️ Ошибка отрисовки графика', 'error');
             }
         }
-
         function resetView() {
             if (!STATE.chartInitialized) return;
             Plotly.relayout('chart', { 'xaxis.autorange': true, 'yaxis.autorange': true });
             showToast('🔄 Вид графика сброшен', 'info');
         }
-
         // === СМЕНА ТАЙМФРЕЙМА ===
         function changeTimeframe(tfKey) {
             if (!TIMEFRAMES[tfKey]) {
@@ -850,7 +791,6 @@
             showToast(`⏱️ Таймфрейм: ${TIMEFRAMES[tfKey].label}`, 'info');
             loadData();
         }
-
         // === ЗАГРУЗКА ДАННЫХ ===
         async function loadData() {
             if (STATE.isLoading) { showToast('⏳ Загрузка уже идёт...', 'info'); return; }
@@ -864,7 +804,6 @@
             updateLoader('Подключение к Binance Futures...', `Символ: ${STATE.symbol}`);
             updateStatus('Загрузка...', 'yellow');
             updateProgress(0);
-
             const symbol = normalizeSymbol(STATE.symbol);
             if (!isValidBinanceSymbol(symbol)) {
                 showToast(`❌ Неверный символ: "${symbol}"`, 'error');
@@ -872,17 +811,14 @@
                 return;
             }
             STATE.symbol = symbol;
-
             const tfConfig = TIMEFRAMES[CONFIG.timeframe];
             const originalHistoryLimit = CONFIG.historyLimit;
             if (tfConfig?.ms >= 86_400_000) {
                 CONFIG.historyLimit = Math.min(CONFIG.historyLimit, 2000);
             }
-
             try {
                 const testRes = await fetch(`${API_CONFIG.baseUrl}/ping`);
                 if (!testRes.ok) throw new Error('Binance API недоступен');
-
                 updateLoader(`Загрузка истории...`, `0 / ${CONFIG.historyLimit} свечей`);
                 
                 const interval = tfConfig?.interval || '5m';
@@ -896,12 +832,9 @@
                         updateLoader(`Загрузка...`, `${loaded} / ${total} свечей (${percent.toFixed(0)}%)`);
                     }
                 );
-
                 CONFIG.historyLimit = originalHistoryLimit;
-
                 updateProgress(100);
                 if (!STATE.candles.length) throw new Error('Не удалось загрузить свечи');
-
                 updateLoader('Поиск Smart Zones...', `${STATE.candles.length} свечей`);
                 STATE.zones = findZonesCycle(STATE.candles);
                 
@@ -920,14 +853,12 @@
                 if (dispAtr && isFinite(STATE.currentATR)) {
                     dispAtr.textContent = STATE.currentATR.toFixed(2);
                 }
-
                 await drawChart();
                 connectWS();
                 
                 showToast(`✅ ${symbol}: ${STATE.candles.length.toLocaleString()} свечей, ${STATE.zones.length} Smart Zones`, 'success');
                 updateStatus('● LIVE', 'green');
                 updateLoader('Готово', '');
-
             } catch (e) {
                 console.error('Load error:', e);
                 showToast('Ошибка: ' + e.message, 'error');
@@ -937,7 +868,6 @@
                 finalizeLoad();
             }
         }
-
         function finalizeLoad() {
             STATE.isLoading = false;
             const loader = document.getElementById('loader');
@@ -946,14 +876,12 @@
             if (loadBtn) loadBtn.disabled = false;
             updateProgress(0, false);
         }
-
         // === WEBSOCKET ===
         function connectWS() {
             // Увеличиваем счётчик и запоминаем актуальный ID
             STATE.wsConnectionId++;
             const myId = STATE.wsConnectionId;
             STATE.currentWsId = myId;
-
             // Полная очистка старого подключения
             if (STATE.ws) {
                 STATE.ws.onopen = null;
@@ -990,7 +918,6 @@
             
             STATE.ws = new WebSocket(wsUrl);
             STATE.wsReconnectAttempts = 0;
-
             STATE.ws.onopen = () => { 
                 if (myId !== STATE.currentWsId) { 
                     console.log('🗑️ Stale WS opened, closing:', myId);
@@ -1001,7 +928,6 @@
                 updateStatus('● LIVE', 'green'); 
                 STATE.wsReconnectAttempts = 0; 
             };
-
             STATE.ws.onmessage = (event) => {
                 if (myId !== STATE.currentWsId) return;
                 if (STATE.isPaused) return;
@@ -1040,7 +966,6 @@
                     console.error('WS parse:', e); 
                 }
             };
-
             STATE.ws.onerror = (err) => { 
                 if (myId !== STATE.currentWsId) return;
                 console.error('WS error:', err); 
@@ -1078,7 +1003,6 @@
                 }
             };
         }
-
         // === UI HANDLERS ===
         function changeSymbol() {
             const input = document.getElementById('symbolInput');
@@ -1102,12 +1026,10 @@
             if (dispSymbol) dispSymbol.textContent = sym;
             loadData();
         }
-
         function togglePanel(id) {
             const panel = document.getElementById(id + 'Panel');
             if (panel) panel.classList.toggle('show');
         }
-
         function toggleLive() {
             STATE.isPaused = !STATE.isPaused;
             const btn = document.getElementById('liveBtn');
@@ -1115,7 +1037,6 @@
             updateStatus(STATE.isPaused ? '● PAUSED' : '● LIVE', STATE.isPaused ? 'yellow' : 'green');
             showToast(STATE.isPaused ? '⏸️ LIVE приостановлен' : '▶️ LIVE возобновлён', 'info');
         }
-
         function applySettings() {
             const getVal = (id, def, parse = parseInt) => {
                 const el = document.getElementById(id);
@@ -1130,7 +1051,6 @@
             CONFIG.mergeTolerance = getVal('cfgMergeTolerance', 2);
             CONFIG.showExtremes = document.getElementById('cfgShowExtremes')?.checked ?? true;
             CONFIG.autoReconnect = document.getElementById('cfgAutoReconnect')?.checked ?? true;
-
             try { localStorage.setItem('proZonesFuturesConfig', JSON.stringify(CONFIG)); } catch(e) {}
             togglePanel('settings');
             showToast('⚙️ Настройки сохранены', 'success');
@@ -1142,7 +1062,6 @@
                 drawChart();
             }
         }
-
         // === ИНИЦИАЛИЗАЦИЯ ===
         window.addEventListener('DOMContentLoaded', () => {
             const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
@@ -1157,7 +1076,6 @@
             if (chkExtremes) chkExtremes.checked = CONFIG.showExtremes;
             const chk = document.getElementById('cfgAutoReconnect');
             if (chk) chk.checked = CONFIG.autoReconnect;
-
             const tfSelect = document.getElementById('tfSelect');
             if (tfSelect) {
                 tfSelect.addEventListener('change', (e) => changeTimeframe(e.target.value));
@@ -1165,13 +1083,11 @@
                     tfSelect.value = CONFIG.timeframe;
                 }
             }
-
             const symInput = document.getElementById('symbolInput');
             if (symInput) symInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') changeSymbol(); });
             console.log('🚀 PRO ZONES Smart v5.2 initialized (WS Migration 2026)');
             loadData();
         });
-
         window.addEventListener('beforeunload', () => {
             if (STATE.ws) STATE.ws.close();
             if (STATE.wsReconnectTimer) clearTimeout(STATE.wsReconnectTimer);
